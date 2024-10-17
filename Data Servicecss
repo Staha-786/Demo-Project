@@ -1,0 +1,142 @@
+using AspNetCore.Reporting;
+using Microsoft.AspNetCore.Hosting;
+using System;
+using System.Data;
+using System.Data.SqlClient;
+using System.Globalization;
+using System.IO;
+using System.Threading;
+using TestRdlc.Models;
+
+namespace TestRdlc.Services
+{
+    public class DataService
+    {
+        private readonly IWebHostEnvironment _env;
+        private readonly string _connectionString;
+
+        public DataService(IWebHostEnvironment env, string connectionString)
+        {
+            _env = env;
+            _connectionString = connectionString;
+        }
+
+        private DataTable GetChallanData(int challanID, int classID)
+        {
+            DataTable dataTable = new DataTable();
+
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("Report_ChallanView", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@challanID", challanID);
+                    cmd.Parameters.AddWithValue("@classID", classID);
+
+                    SqlDataAdapter adapter = new SqlDataAdapter(cmd);
+                    adapter.Fill(dataTable);
+                }
+            }
+
+            return dataTable;
+        }
+
+        public byte[] GenerateReport(int challanID, int classID, string datasetName)
+        {
+            try
+            {
+                // Set to a valid culture
+                var cultureInfo = new CultureInfo("en-US");
+                Thread.CurrentThread.CurrentCulture = cultureInfo;
+                Thread.CurrentThread.CurrentUICulture = cultureInfo;
+
+                // Log current culture for debugging
+                Console.WriteLine($"Current Culture: {Thread.CurrentThread.CurrentCulture}");
+
+                // Load the report from the provided path
+                var reportFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Reports", "MyReport.rdlc");
+
+                if (!File.Exists(reportFilePath))
+                {
+                    throw new FileNotFoundException("The specified report file could not be found.", reportFilePath);
+                }
+
+                // Create a LocalReport object and load the report
+                var localReport = new LocalReport(reportFilePath);
+
+
+                DataTable challanData = GetChallanData(challanID, classID);
+
+                if (challanData == null || challanData.Rows.Count == 0)
+                {
+                    throw new Exception("No data returned from the stored procedure.");
+                }
+
+                localReport.AddDataSource(datasetName, challanData);
+
+                // Validate data source
+                //if (dataSource == null || !dataSource.Any())
+                //{
+                //    throw new Exception("Data source is null or empty.");
+                //}
+
+                //// Add the data source to the report
+                //localReport.AddDataSource(datasetName, dataSource);
+
+                // Render the report to PDF
+             
+                var result = localReport.Execute(RenderType.Pdf);
+
+
+                //var result = localReport.Execute(RenderType.Pdf,1);
+
+
+
+                // Return the generated PDF as byte array
+                return result.MainStream;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during report generation: {ex}");
+                throw; // Rethrow or handle accordingly
+            }
+        }
+
+
+        //public byte[] GenerateReport(int challanID, int classID, string datasetName)
+        //{
+        //    try
+        //    {
+        //        var cultureInfo = new CultureInfo("en-US");
+        //        Thread.CurrentThread.CurrentCulture = cultureInfo;
+        //        Thread.CurrentThread.CurrentUICulture = cultureInfo;
+
+        //        string reportFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Reports", "MyReport.rdlc");
+
+        //        if (!File.Exists(reportFilePath))
+        //        {
+        //            throw new FileNotFoundException("The report file not found.", reportFilePath);
+        //        }
+
+        //        var localReport = new LocalReport(reportFilePath);
+
+        //        DataTable challanData = GetChallanData(challanID, classID);
+
+        //        if (challanData == null || challanData.Rows.Count == 0)
+        //        {
+        //            throw new Exception("No data returned from the stored procedure.");
+        //        }
+
+        //        localReport.AddDataSource(datasetName, challanData);
+
+        //        var result = localReport.Execute(RenderType.Pdf);
+        //        return result.MainStream;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"Error during report generation: {ex}");
+        //        throw; // Rethrow or handle accordingly
+        //    }
+        //}
+    }
+}

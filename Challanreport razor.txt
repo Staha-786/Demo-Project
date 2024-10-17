@@ -1,0 +1,22 @@
+@page "/challan-report"
+
+@inject DataService _service
+
+@rendermode InteractiveServer
+
+
+<button @onclick="GeneratePdfReport">Generate Report</button>
+
+@code {
+    private void GeneratePdfReport()
+    {
+        int challanID = 1; // Replace with actual ChallanID
+        int classID = 1; // Replace with actual classID
+        string reportPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Reports", "MyReport.rdlc");
+        string datasetName = "DataSet1"; // Name of the dataset in your RDLC file
+  //  E:\BLAZOR\Test_Projects\TestRdlc\wwwroot\Reports\MyReport.rdlc
+        byte[] pdfBytes = _service.GenerateReport(challanID,classID, datasetName);
+
+        // Logic to handle the PDF bytes (e.g., download or display in an iframe)
+    }
+}
